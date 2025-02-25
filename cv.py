@@ -4,6 +4,8 @@ import json
 import numpy as np
 from sklearn.cluster import KMeans
 
+st.set_page_config(layout="wide")  # use full width for the app
+
 # Define the points as (Health, Computer science, Experience)
 points = {
     "DFGSM": (10, 1, 5),
@@ -14,20 +16,17 @@ points = {
     "PIR": (6, 4, 6)
 }
 
-# Map axes:
-# x = Health (horizontal)
-# y = Experience (depth)
-# z = Computer science (vertical)
+# Map axes: x = Health, y = Experience, z = Computer science.
 x_vals, y_vals, z_vals, labels, hovertexts = [], [], [], [], []
 for label, (health, cs, exp) in points.items():
     x_vals.append(health)
     y_vals.append(exp)
     z_vals.append(cs)
     labels.append(label)
-    # Remove coordinate details and add additional details.
+    # Remove coordinate details and add additional info.
     hovertexts.append(f"<b>{label}</b><br>Additional details: An essential skill for this role.")
 
-# Create a simple 3D scatter plot with larger markers and white text labels.
+# Create a 3D scatter plot.
 fig = go.Figure(data=go.Scatter3d(
     x=x_vals,
     y=y_vals,
@@ -42,7 +41,7 @@ fig = go.Figure(data=go.Scatter3d(
     showlegend=False
 ))
 
-# Set the initial camera so that the origin appears in the bottom left front.
+# Set the initial camera view.
 initial_eye = dict(x=0.05, y=-2.5, z=0.5)
 fig.update_layout(
     scene=dict(
@@ -59,7 +58,7 @@ fig.update_layout(
     plot_bgcolor='black'
 )
 
-# Precompute k-means clustering with k=2 on the points.
+# Precompute k-means clustering with k=2.
 points_array = np.array(list(zip(x_vals, y_vals, z_vals)))
 kmeans = KMeans(n_clusters=2, random_state=0).fit(points_array)
 cluster_labels = kmeans.labels_.tolist()
@@ -76,7 +75,7 @@ if cs_idx == health_idx:
 else:
     centroid_names = {cs_idx: "AI", health_idx: "Medecine"}
 
-# Create hover texts for centroids with additional details.
+# Create hover texts for centroids.
 centroid_hover_texts = []
 for i in range(len(centroids)):
     if centroid_names[i] == "AI":
@@ -86,7 +85,7 @@ for i in range(len(centroids)):
     else:
         centroid_hover_texts.append("")
 
-# Convert objects to JSON strings for embedding in HTML/JS.
+# Convert objects to JSON strings for embedding.
 fig_json = fig.to_json()
 cluster_labels_json = json.dumps(cluster_labels)
 centroids_json = json.dumps(centroids)
@@ -94,20 +93,28 @@ centroid_names_json = json.dumps(centroid_names)
 centroid_hover_texts_json = json.dumps(centroid_hover_texts)
 initial_eye_json = json.dumps(initial_eye)
 
-# Animation parameters: slower rotation (720 steps) and a smaller zoom effect.
+# Animation parameters.
 steps = 720
 zoom_factor = 0.2
 
 html_string = f"""
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body {{
+        html, body {{
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
             background-color: black;
             color: white;
-            margin: 0;
-            overflow: hidden;
+        }}
+        #plotly-div {{
+            width: 100vw;
+            height: 100vh;
         }}
         #rotate-button {{
             position: absolute;
@@ -121,21 +128,20 @@ html_string = f"""
 </head>
 <body>
     <button id="rotate-button">Run k mean clustering</button>
-    <div id="plotly-div" style="width:100vw; height:100vh;"></div>
+    <div id="plotly-div"></div>
     <script>
         var fig = {fig_json};
-        // Disable manual drag rotation by intercepting mousedown events.
+        // Prevent full manual rotation by intercepting mouse events.
         document.getElementById('plotly-div').onmousedown = function(e) {{
             e.preventDefault();
         }};
         Plotly.newPlot('plotly-div', fig.data, fig.layout);
         
-        // Precomputed clustering data from Python.
+        // Precomputed clustering data.
         var clusterLabels = {cluster_labels_json};
         var centroids = {centroids_json};
         var centroidNames = {centroid_names_json};
         var centroidHoverTexts = {centroid_hover_texts_json};
-        
         // Define color mapping: AI -> blue, Medecine -> red.
         var clusterColorMap = {{"AI": "blue", "Medecine": "red"}};
         
@@ -148,14 +154,14 @@ html_string = f"""
 
         document.getElementById("rotate-button").addEventListener("click", function() {{
             if (!clusteringApplied) {{
-                // Update marker colors based on cluster labels using blue and red.
+                // Update marker colors based on cluster labels.
                 var newMarkerColors = clusterLabels.map(function(lbl) {{
                     var cname = centroidNames[lbl] || centroidNames[String(lbl)];
                     return clusterColorMap[cname];
                 }});
                 Plotly.restyle('plotly-div', {{'marker.color': [newMarkerColors]}}, [0]);
                 
-                // Draw lines from centroids to each point with no hover info.
+                // Draw lines from centroids to each point.
                 var x_vals = fig.data[0].x;
                 var y_vals = fig.data[0].y;
                 var z_vals = fig.data[0].z;
@@ -178,7 +184,7 @@ html_string = f"""
                 }}
                 Plotly.addTraces('plotly-div', lineTraces);
                 
-                // Add centroids as markers with text labels and hover text.
+                // Add centroids as markers with hover texts.
                 var centroidTrace = {{
                     type: 'scatter3d',
                     mode: 'markers+text',
@@ -201,8 +207,7 @@ html_string = f"""
                 
                 clusteringApplied = true;
             }}
-
-            // Start rotation animation.
+            // Run rotation animation.
             var step = 0;
             function animate() {{
                 if (step <= steps) {{
